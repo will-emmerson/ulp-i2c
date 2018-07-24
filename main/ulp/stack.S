@@ -2,6 +2,7 @@
  * ULP stack and subroutine macros
  */
 
+
 .macro push rx
 	st \rx,r3,0
 	sub r3,r3,1
@@ -12,15 +13,15 @@
 	ld \rx,r3,0
 .endm
 
-// Prepare subroutine jump, uses scratch register sr
-.macro psr sr=r1 pos=.
-	.set _next2,(\pos+16)
-	move \sr,_next2
-	push \sr
+// Prepare subroutine jump
+.macro psr
+	.set addr,(.+16)
+	move r1,addr
+	push r1
 .endm
 
 // Return from subroutine
-.macro ret sr=r1
-	pop \sr
-	jump \sr
+.macro ret
+	pop r1
+	jump r1
 .endm

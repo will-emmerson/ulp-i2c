@@ -34,23 +34,25 @@ entry:
 	move r3,stackEnd
 
 	// Read the BMP-180 every 4 timer cycles:
-	move r1,counter
-	ld r0,r1,0
-	add r0,r0,1
-	st r0,r1,0 // increment counter
-	and r0,r0,0x3
-	jumpr waitNext,1,ge
+	/*
+	MOVE r1, counter //move address of counter global into r1
+	ld r0,r1,0  // r0 = [r1+0]
+	add r0,r0,1 // r0 += 1
+	st r0,r1,0 // [r1+0] (counter) = r0
+	and r0,r0,0x3  // r0 = r0 && 0x3
+	jumpr waitNext,1,ge // halt if r0
+	*/
 
 	// GPIO2 LED ON
-	WRITE_RTC_REG(RTC_GPIO_OUT_REG, RTC_GPIO_OUT_DATA_S + 12, 1, 1)
+	//WRITE_RTC_REG(RTC_GPIO_OUT_REG, RTC_GPIO_OUT_DATA_S + 12, 1, 1)
 
-	psr
-	jump readBMP
+	//psr
+	//jump readBMP
 
 	// GPIO2 LED OFF
-	WRITE_RTC_REG(RTC_GPIO_OUT_REG, RTC_GPIO_OUT_DATA_S + 12, 1, 0)
+	//WRITE_RTC_REG(RTC_GPIO_OUT_REG, RTC_GPIO_OUT_DATA_S + 12, 1, 0)
 
-	/* wake up after significant change */
+	/* wake up after significant change
 	move r1,pressure
 	ld r0,r1,0
 	move r1,prev_pressure
@@ -59,6 +61,8 @@ entry:
 	psr
 	jump abs
 	jumpr testTemp,6,lt
+	*/
+	psr
 	jump wakeUp
 
 testTemp:
@@ -72,7 +76,7 @@ testTemp:
 	jumpr waitNext,10,lt
 
 wakeUp:
-	/* safe new pressure and temp */
+	/* safe new pressure and temp
 	move r1,pressure
 	ld r0,r1,0
 	move r1,prev_pressure
