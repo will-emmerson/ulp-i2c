@@ -59,6 +59,7 @@ Addr   Data   R/W     ACK/NAK
 #define BMP280_REGISTER_CHIPID                (0xD0)
 #define BMP280_REGISTER_VERSION               (0xD1)
 #define BMP280_REGISTER_SOFTRESET             (0xE0)
+
 #define BMP280_REGISTER_PRESS                 (0xF7)	// 0xF7-0xF9
 #define BMP280_REGISTER_TEMP                  (0xFA)	// 0xFA-0xFC
 
@@ -96,17 +97,28 @@ Write
 
 #define BMP280_ADDR 0x76
 #define BMP280_CTRL_MEAS 0xF5
-#define BMP280_CTRL_MEAS_VAL 0xE8
+#define BMP280_CTRL_MEAS_VAL_OLD 0xE8
+#define BMP280_CTRL_MEAS_VAL_NEW 0x51
+#define BMP280_CTRL_MEAS_VAL reg_ctrl
 #define BMP280_CONFIG 0xF4
-#define BMP280_CONFIG_VAL 0x4D
+#define BMP280_CONFIG_VAL_OLD 0x4D
+#define BMP280_CONFIG_VAL_NEw 0xF0
+#define BMP280_CONFIG_VAL reg_config
 
 
 
 /* Define variables, which go into .bss section (zero-initialized data) */
 	.bss
 
-	.global temp
-temp:	.long 0
+    .global reg_config, reg_ctrl
+	.global temp_a, temp_b, temp_c
+
+reg_config: .long 0
+reg_ctrl: .long 0
+temp_a:	.long 0
+temp_b:	.long 0
+temp_c:	.long 0
+
 	.global	pressure, pressure2
 pressure: .long 0
 pressure2: .long 0
@@ -150,6 +162,7 @@ p7: .long 0
 p8: .long 0
 p9: .long 0
 
+
 	/* Code goes into .text section */
 	.text
 
@@ -172,26 +185,55 @@ didInit:
 	move r0,r2 // test for error in r2
 	jumpr fail,1,ge
 
-	// Wait 150ms for sensor computation
+	// Wait 50ms for sensor computation
 	move r2,50
 	psr
 	jump waitMs
 
-	// Read 16 bit result
-	/*
+	// Read temp
 	move r1, BMP280_ADDR
 	push r1
-	move r1, BMP280_REG_RESULT
+	move r1, BMP280_REGISTER_TEMP
 	push r1
 	psr
-	jump read16
+	jump read8
 	add r3,r3,2 // remove call parameters from stack
 	move r1,r0 // save result
 	move r0,r2 // test for error
 	jumpr fail,1,ge
-	move r2,temp // store result
+	move r2, temp_a // store result
 	st r1,r2,0
 
+	// Read 16 bit result
+	move r1, BMP280_ADDR
+	push r1
+	move r1, BMP280_REGISTER_TEMP + 1
+	push r1
+	psr
+	jump read8
+	add r3,r3,2 // remove call parameters from stack
+	move r1,r0 // save result
+	move r0,r2 // test for error
+	jumpr fail,1,ge
+	move r2, temp_b // store result
+	st r1,r2,0
+
+	// Read 16 bit result
+	move r1, BMP280_ADDR
+	push r1
+	move r1, BMP280_REGISTER_TEMP + 2
+	push r1
+	psr
+	jump read8
+	add r3,r3,2 // remove call parameters from stack
+	move r1,r0 // save result
+	move r0,r2 // test for error
+	jumpr fail,1,ge
+	move r2, temp_c // store result
+	st r1,r2,0
+
+
+    /*
 	// Read raw pressure
 	move r1,BMP180_ADDR
 	push r1
@@ -235,18 +277,31 @@ didInit:
 	jumpr fail,1,ge
 	move r2,pressure2 // store result
 	st r1,r2,0
-	*/
 
+    */
 	ret
 
 fail:
-	move r1,temp
+	move r1,temp_a
 	move r0,0 // 0 signals error
 	st r0,r1,0
 	ret
 
 // Setup measurement settings
 initBMP:
+    MOVE r1, BMP280_ADDR
+    PUSH r1
+    MOVE r1, BMP280_REGISTER_SOFTRESET
+    PUSH r1
+    move r1, 0xB6 // reset sensor
+    psr
+    JUMP write8
+    ADD r3,r3,3
+
+	move r2,200
+	psr
+	jump waitMs
+
 	MOVE r1, BMP280_ADDR
 	PUSH r1
 	MOVE r1, BMP280_CTRL_MEAS
@@ -273,9 +328,9 @@ read_cal:
 	jump fail
 readok:
 
-	ld r1,r3,12 // r1 <- [r3 + 12]
-	st r0,r1,0  // [r1] <- r0
-	add r1,r1,1 // r1 += 1
+	ld r1,r3,12 // r1 <- [r3 + 12]  r1 = address of third stack param
+	st r0,r1,0  // [r1] <- r0       r0 -> [r1] (result from read16)
+	add r1,r1,1 // r1 += 1          //  increment address of third stack param by 1
 	st r1,r3,12 // [r3+12] = r1 -        next cal parameter address
 
 	ld r0,r3,4  // r0 = [r3 + 4]

@@ -34,20 +34,18 @@ entry:
 	move r3,stackEnd
 
 	// Read the BMP-180 every 4 timer cycles:
-	/*
 	MOVE r1, counter //move address of counter global into r1
 	ld r0,r1,0  // r0 = [r1+0]
 	add r0,r0,1 // r0 += 1
 	st r0,r1,0 // [r1+0] (counter) = r0
 	and r0,r0,0x3  // r0 = r0 && 0x3
 	jumpr waitNext,1,ge // halt if r0
-	*/
 
 	// GPIO2 LED ON
 	//WRITE_RTC_REG(RTC_GPIO_OUT_REG, RTC_GPIO_OUT_DATA_S + 12, 1, 1)
 
-	//psr
-	//jump readBMP
+	psr
+	jump readBMP
 
 	// GPIO2 LED OFF
 	//WRITE_RTC_REG(RTC_GPIO_OUT_REG, RTC_GPIO_OUT_DATA_S + 12, 1, 0)
@@ -65,6 +63,7 @@ entry:
 	psr
 	jump wakeUp
 
+/*
 testTemp:
 	move r1,temp
 	ld r0,r1,0
@@ -74,8 +73,15 @@ testTemp:
 	psr
 	jump abs
 	jumpr waitNext,10,lt
+	*/
 
 wakeUp:
+	/* Check if the system can be woken up */
+	READ_RTC_FIELD(RTC_CNTL_LOW_POWER_ST_REG, RTC_CNTL_RDY_FOR_WAKEUP)
+	and r0, r0, 1
+	jump wakeUp, eq
+
+	/* Wake up the SoC, end program */
 	/* safe new pressure and temp
 	move r1,pressure
 	ld r0,r1,0

@@ -129,9 +129,11 @@ read16:
 	psr
 	jump i2c_stop_cond
 
-	pop r0
-	pop r2 // first byte
-	lsh r2,r2,8
+    // This is different from tomtor's implementation
+    // Other implementations of read16 have the first byte received as the LSB, not the MSB
+	pop r2 // second byte
+	pop r0 // first byte
+	lsh r2,r2,8 // second byte is most significant so shift it left << 8
 	or r2,r2,r0
 	move r0,r2
 
