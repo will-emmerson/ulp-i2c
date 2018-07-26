@@ -33,13 +33,13 @@
 	.bss
 
     .global reg_config, reg_ctrl
-	.global temp_a, temp_b, temp_c
+	.global temp_msb, temp_lsb, temp_xlsb
 
 reg_config: .long 0
 reg_ctrl: .long 0
-temp_a:	.long 0
-temp_b:	.long 0
-temp_c:	.long 0
+temp_msb:	.long 0
+temp_lsb:	.long 0
+temp_xlsb:	.long 0
 
 	.global	pressure, pressure2
 pressure: .long 0
@@ -99,7 +99,7 @@ didInit:
 	move r1,r0 // save result
 	move r0,r2 // test for error
 	jumpr fail,1,ge
-	move r2, temp_a // store result
+	move r2, temp_msb // store result
 	st r1,r2,0
 
 	// Read 16 bit result
@@ -113,7 +113,7 @@ didInit:
 	move r1,r0 // save result
 	move r0,r2 // test for error
 	jumpr fail,1,ge
-	move r2, temp_b // store result
+	move r2, temp_lsb // store result
 	st r1,r2,0
 
 	// Read 16 bit result
@@ -127,7 +127,7 @@ didInit:
 	move r1,r0 // save result
 	move r0,r2 // test for error
 	jumpr fail,1,ge
-	move r2, temp_c // store result
+	move r2, temp_xlsb // store result
 	st r1,r2,0
 
 
@@ -180,7 +180,7 @@ didInit:
 	ret
 
 fail:
-	move r1,temp_a
+	move r1,temp_msb
 	move r0,0 // 0 signals error
 	st r0,r1,0
 	ret

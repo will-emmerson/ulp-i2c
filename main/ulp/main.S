@@ -8,8 +8,7 @@
 	.bss
 
 prev_temp:	.long 0
-prev_pressure: .long 0
-prev_pressure2: .long 0
+temp_val: .long 0
 
 	.global	counter
 counter: .long 0
@@ -35,6 +34,10 @@ entry:
 	st r0,r1,0 // [r1+0] (counter) = r0
 	jumpr waitNext,10,lt // halt if r0 < 10
 
+    //reset counter
+	MOVE r0, 0
+	st r0,r1,0
+
 	psr
 	jump readBMP
 
@@ -48,20 +51,39 @@ entry:
 	jump abs
 	jumpr testTemp,6,lt
 	*/
-	psr
-	jump wakeUp
+	//psr
+	//jump wakeUp
 
-/*
 testTemp:
-	move r1,temp
+    // SHIFT = 6
+    // temp_msb<< (8-SHIFT) | temp_lsb >> SHIFT
+	move r1,temp_msb
 	ld r0,r1,0
+	lsh r0,r0,8
+	move r1,temp_lsb
+	ld r1,r1,0
+	//rsh r1,r1,6
+	or r0,r1,r0
+
+	//save incase we need it
+	move r1, temp_val
+	st r0,r1,0
+
+
 	move r1,prev_temp
 	ld r2,r1,0
+
 	sub r0,r0,r2
 	psr
 	jump abs
-	jumpr waitNext,10,lt
-	*/
+	jumpr waitNext,30,lt
+
+	//save new temp
+	move r1, temp_val
+	ld r0,r1,0
+
+	move r1, prev_temp
+	st r0,r1,0
 
 wakeUp:
 	/* Check if the system can be woken up */

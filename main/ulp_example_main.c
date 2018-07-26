@@ -99,7 +99,8 @@ const gpio_num_t gpio_sda = GPIO_NUM_33;
   or modify the line in main.S that reads jumpr waitNext,10,lt // halt if r0 < 10
   */
 
-#define SLEEP_CYCLES_PER_S 187500 // cycles per second
+//#define SLEEP_CYCLES_PER_S 187500 // cycles per second
+#define SLEEP_CYCLES_PER_S 18750 // cycles per second
 #define SECONDS_PER_ULP_WAKEUP 1
 
 static void setup()
@@ -136,9 +137,9 @@ static void setup()
 #define p7 ((int16_t) ulp_p7)
 #define p8 ((int16_t) ulp_p8)
 #define p9 ((int16_t) ulp_p9)
-#define temp_a ((uint8_t) ulp_temp_a)
-#define temp_b ((uint8_t) ulp_temp_b)
-#define temp_c ((uint8_t) ulp_temp_c)
+#define temp_a ((uint8_t) ulp_temp_msb)
+#define temp_b ((uint8_t) ulp_temp_lsb)
+#define temp_c ((uint8_t) ulp_temp_xlsb)
 #define counter ((uint16_t) ulp_counter)
 
 #define BME280_S32_t int32_t
