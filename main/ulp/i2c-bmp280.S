@@ -8,54 +8,8 @@
 
 #include "stack.S"
 
+#define BME280_SAMPLING_DELAY  113 //maximum measurement time in ms for maximum oversampling for all measures = 1.25 + 2.3*16 + 2.3*16 + 0.575 + 2.3*16 + 0.575 ms
 
-/*
-Working BMP280 i2c example...
-
-Addr   Data   R/W     ACK/NAK
-0x76   0xD0   Write   ACK       ChipID?
-0x76   0x58   Read    NAK       ChipID = 0x58 (BMP280)
-0x76   0x88   Write   ACK       Read Calibration Data (Temp calibration)
-0x76   0x3A   Read    ACK       T1
-0x76   0x6E   Read    ACK       T1
-0x76   0xA0   Read    ACK       T2
-0x76   0x67   Read    ACK       T2
-0x76   0x32   Read    ACK       T3
-0x76   0x00   Read    NAK       T3
-0x76   0x8E   Write   ACK       Read Calibration Data (Pressure)
-0x76   0x35   Read    ACK       P1
-0x76   0x96   Read    ACK
-0x76   0xD7   Read    ACK       P2
-0x76   0xD5   Read    ACK
-0x76   0xD0   Read    ACK       P3
-0x76   0x0B   Read    ACK
-0x76   0xF3   Read    ACK       P4
-0x76   0x1E   Read    ACK
-0x76   0x88   Read    ACK       P5
-0x76   0xFF   Read    ACK
-0x76   0xF9   Read    ACK       P6
-0x76   0xFF   Read    ACK
-0x76   0x8C   Read    ACK       P7
-0x76   0x3C   Read    ACK
-0x76   0xF8   Read    ACK       P8
-0x76   0xC6   Read    ACK
-0x76   0x70   Read    ACK       P9
-0x76   0x17   Read    NAK
-0x76   0xF5   Write   ACK       Write config   SPI, filter, t_sb
-0x76   0x78   Write   ACK       0111 1000 =
-0x76   0xF4   Write   ACK       Write config
-0x76   0xB7   Write   ACK
-0x76   0xF7   Write   ACK
-0x76   0x52   Read    ACK
-0x76   0xFF   Read    ACK
-0x76   0xF0   Read    ACK
-0x76   0x7F   Read    ACK
-0x76   0x3E   Read    ACK
-0x76   0x50   Read    NAK
-*/
-
-#define BMP280_REGISTER_CONTROL               (0xF4)
-#define BMP280_REGISTER_CONFIG                (0xF5)
 #define BMP280_REGISTER_CHIPID                (0xD0)
 #define BMP280_REGISTER_VERSION               (0xD1)
 #define BMP280_REGISTER_SOFTRESET             (0xE0)
@@ -67,42 +21,10 @@ Addr   Data   R/W     ACK/NAK
 #define BMP280_REGISTER_DIG_P                 (0x8E)	// 0x8E-0x9F (18)
 #define BMP280_REGISTER_END                    0x9F
 
-
-#define BME280_SAMPLING_DELAY  113 //maximum measurement time in ms for maximum oversampling for all measures = 1.25 + 2.3*16 + 2.3*16 + 0.575 + 2.3*16 + 0.575 ms
-
-
-
-/*
-
-Use BMP280 in normal resolution mode with forced sampling
-
-Control register 0xF4
-
-Bit 1,0   mode  [1:0] = 01 (Forced mode)
-Bit 4,3,2 osrs_p[2:0] = 011 (Pressure oversampling x4 )
-Bit 7,6,5 osrs_t[2:0] = 010  (Temperature Oversampling x2)
-Write
-01001101 = 0x4D
-
-Control register 0xF5
-t_sb[2:0] 111 (4s in normal mode)
-filter[2:0] 010 (IIR = 4)
-spi3w_en [0] 00 (no SPI)
-
-Write
-11101000 = 0xE8
-
-
-*/
-
 #define BMP280_ADDR 0x76
 #define BMP280_CTRL_MEAS 0xF5
-#define BMP280_CTRL_MEAS_VAL_OLD 0xE8
-#define BMP280_CTRL_MEAS_VAL_NEW 0x51
 #define BMP280_CTRL_MEAS_VAL reg_ctrl
 #define BMP280_CONFIG 0xF4
-#define BMP280_CONFIG_VAL_OLD 0x4D
-#define BMP280_CONFIG_VAL_NEw 0xF0
 #define BMP280_CONFIG_VAL reg_config
 
 
@@ -122,30 +44,6 @@ temp_c:	.long 0
 	.global	pressure, pressure2
 pressure: .long 0
 pressure2: .long 0
-
-
-/*
-static struct {
-	uint16_t  dig_T1;
-	int16_t   dig_T2;
-	int16_t   dig_T3;
-	uint16_t  dig_P1;
-	int16_t   dig_P2;
-	int16_t   dig_P3;
-	int16_t   dig_P4;
-	int16_t   dig_P5;
-	int16_t   dig_P6;
-	int16_t   dig_P7;
-	int16_t   dig_P8;
-	int16_t   dig_P9;
-	uint8_t   dig_H1;
-	int16_t   dig_H2;
-	uint8_t   dig_H3;
-	int16_t   dig_H4;
-	int16_t   dig_H5;
-	int8_t    dig_H6;
-} bme280_data;
-*/
 
 	.global t1, t2, t3, p1, p2, p3, p4, p5, p6, p7, p8, p9;
 
