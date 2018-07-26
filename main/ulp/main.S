@@ -1,11 +1,6 @@
-/*
- * Demo of I2C ULP routines
- */
-
 #include "soc/rtc_cntl_reg.h"
 #include "soc/rtc_io_reg.h"
 #include "soc/soc_ulp.h"
-
 #include "stack.S"
 
 
@@ -33,22 +28,15 @@ stackEnd:
 entry:
 	move r3,stackEnd
 
-	// Read the BMP-180 every 4 timer cycles:
+	// Read every 10 timer cycles
 	MOVE r1, counter //move address of counter global into r1
 	ld r0,r1,0  // r0 = [r1+0]
 	add r0,r0,1 // r0 += 1
 	st r0,r1,0 // [r1+0] (counter) = r0
-	and r0,r0,0x3  // r0 = r0 && 0x3
-	jumpr waitNext,1,ge // halt if r0
-
-	// GPIO2 LED ON
-	//WRITE_RTC_REG(RTC_GPIO_OUT_REG, RTC_GPIO_OUT_DATA_S + 12, 1, 1)
+	jumpr waitNext,10,lt // halt if r0 < 10
 
 	psr
 	jump readBMP
-
-	// GPIO2 LED OFF
-	//WRITE_RTC_REG(RTC_GPIO_OUT_REG, RTC_GPIO_OUT_DATA_S + 12, 1, 0)
 
 	/* wake up after significant change
 	move r1,pressure

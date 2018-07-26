@@ -341,6 +341,7 @@ readok:
 	add r3,r3,3
 	jump didInit
 
+.global waitMs
 // Wait for r2 milliseconds
 waitMs:
 	wait 8000
