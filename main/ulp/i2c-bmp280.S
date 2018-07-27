@@ -94,36 +94,26 @@ didInit:
 	psr
 	jump waitMs
 
+	//psr
+	//jump i2c_start_cond
 
-	psr
-	jump i2c_start_cond
+    move r1, BMP280_ADDR
+    push r1
 
-    move r2, BMP280_ADDR
-	lsh r2,r2,1
-	psr
-	jump i2c_write_byte
-	jumpr popfail,1,ge
+    MOVE r1, BMP280_REGISTER_PRESS
+    push r1
+    push r1
 
-    MOVE r2, BMP280_REGISTER_PRESS
-	psr
-	jump i2c_write_byte
-	jumpr popfail,1,ge
+    psr
+    jump read_intro
 
-	psr
-	jump i2c_start_cond
-
-    move r2, BMP280_ADDR
-	lsh r2,r2,1
-	or r2,r2,1 // Address Read
-	psr
-	jump i2c_write_byte
-	jumpr popfail,1,ge
+    add r3,r3,3
 
 	move r2,0 // last byte
 	psr
 	jump i2c_read_byte
 	move r2, pres_msb
-	st r0,r2,0
+    st r0,r2,0
 
 
 	move r2,0 // last byte
@@ -160,9 +150,10 @@ didInit:
 	move r2, temp_xlsb
 	st r0,r2,0
 
+    // Done
+
 	psr
 	jump i2c_stop_cond
-
 	jump testTemp
 
 fail:

@@ -16,7 +16,7 @@ counter: .long 0
 
 	.global stack
 stack:
-	.skip 100
+	.skip 70
 	.global stackEnd
 stackEnd:
 	.long 0

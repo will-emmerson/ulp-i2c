@@ -45,6 +45,7 @@ write_b:
 	ret
 
 
+/*
 .global write16
 write16:
 	psr
@@ -57,7 +58,9 @@ write16:
 	jumpr fail,1,ge
 
 	jump write_b
+	*/
 
+.global read_intro
 read_intro:
        psr
        jump i2c_start_cond
