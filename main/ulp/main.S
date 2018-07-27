@@ -7,6 +7,7 @@
 /* Define variables, which go into .bss section (zero-initialized data) */
 	.bss
 
+prev_pres:	.long 0
 prev_temp:	.long 0
 temp_val: .long 0
 
@@ -32,7 +33,7 @@ entry:
 	ld r0,r1,0  // r0 = [r1+0]
 	add r0,r0,1 // r0 += 1
 	st r0,r1,0 // [r1+0] (counter) = r0
-	jumpr waitNext,10,lt // halt if r0 < 10
+	jumpr waitNext,5,lt // halt if r0 < 10
 
     //reset counter
 	MOVE r0, 0
@@ -41,19 +42,7 @@ entry:
 	psr
 	jump readBMP
 
-	/* wake up after significant change
-	move r1,pressure
-	ld r0,r1,0
-	move r1,prev_pressure
-	ld r2,r1,0
-	sub r0,r0,r2
-	psr
-	jump abs
-	jumpr testTemp,6,lt
-	*/
-	//psr
-	//jump wakeUp
-
+.global testTemp
 testTemp:
 	move r1,temp_msb
 	ld r0,r1,0
@@ -73,13 +62,44 @@ testTemp:
 	psr
 	jump abs
 	// A threshold of 50 is equal to approx 0.25 C - adjust as needed
-	jumpr waitNext,50,lt
+	jumpr testPres,50,lt
 
-	//save new temp
+	//get new temp
 	move r1, temp_val
 	ld r0,r1,0
 
+    //save in prev_temp register
 	move r1, prev_temp
+	st r0,r1,0
+	jump wakeUp
+
+testPres:
+	move r1,pres_msb
+	ld r0,r1,0
+	lsh r0,r0,8
+	move r1,pres_lsb
+	ld r1,r1,0
+	or r0,r1,r0
+
+	//save incase we need it
+	move r1, temp_val
+	st r0,r1,0
+
+	move r1,prev_pres
+	ld r2,r1,0
+
+	sub r0,r0,r2
+	psr
+	jump abs
+	// A threshold of 50 is equal to approx 0.25 C - adjust as needed
+	jumpr waitNext,50,lt
+
+	//get new temp
+	move r1, temp_val
+	ld r0,r1,0
+
+    //save in prev_temp register
+	move r1, prev_pres
 	st r0,r1,0
 
 wakeUp:

@@ -16,16 +16,15 @@
 
 #define BMP280_REGISTER_PRESS                 (0xF7)	// 0xF7-0xF9
 #define BMP280_REGISTER_TEMP                  (0xFA)	// 0xFA-0xFC
+#define BMP280_REGISTER_END                    0xFC
 
 #define BMP280_REGISTER_DIG_T                 (0x88)	// 0x88-0x8D ( 6)
 #define BMP280_REGISTER_DIG_P                 (0x8E)	// 0x8E-0x9F (18)
-#define BMP280_REGISTER_END                    0x9F
+#define BMP280_REGISTER_DIG_END                0x9F
 
 #define BMP280_ADDR 0x76
-#define BMP280_CTRL_MEAS 0xF5
-#define BMP280_CTRL_MEAS_VAL reg_ctrl
-#define BMP280_CONFIG 0xF4
-#define BMP280_CONFIG_VAL reg_config
+#define BMP280_CTRL_MEAS 0xF4
+#define BMP280_CONFIG 0xF5
 
 
 
@@ -33,17 +32,18 @@
 	.bss
 
     .global reg_config, reg_ctrl
-	.global temp_msb, temp_lsb, temp_xlsb
 
 reg_config: .long 0
 reg_ctrl: .long 0
+
+	.global	pres_msb, pres_lsb, pres_xlsb, temp_msb, temp_lsb, temp_xlsb
+pres_msb: .long 0
+pres_lsb: .long 0
+pres_xlsb: .long 0
 temp_msb:	.long 0
 temp_lsb:	.long 0
 temp_xlsb:	.long 0
 
-	.global	pressure, pressure2
-pressure: .long 0
-pressure2: .long 0
 
 	.global t1, t2, t3, p1, p2, p3, p4, p5, p6, p7, p8, p9;
 
@@ -64,6 +64,11 @@ p9: .long 0
 	/* Code goes into .text section */
 	.text
 
+popfail:
+	pop r1 // pop caller return address
+	move r2,1
+	ret
+
 .global readBMP
 readBMP:
     //if t1 == 0 goto initBMP
@@ -73,10 +78,11 @@ readBMP:
 didInit:
 	move r1, BMP280_ADDR
 	push r1
-	move r1, BMP280_CONFIG
-	push r1
-	move r1, BMP280_CONFIG_VAL
-	push r1
+	MOVE r1, BMP280_CTRL_MEAS
+	PUSH r1
+	MOVE r0, reg_ctrl
+	ld r1, r0,0
+	PUSH r1
 	psr
 	jump write8
 	add r3,r3,3 // remove 3 arguments from stack
@@ -88,96 +94,76 @@ didInit:
 	psr
 	jump waitMs
 
-	// Read temp
-	move r1, BMP280_ADDR
-	push r1
-	move r1, BMP280_REGISTER_TEMP
-	push r1
+
 	psr
-	jump read8
-	add r3,r3,2 // remove call parameters from stack
-	move r1,r0 // save result
-	move r0,r2 // test for error
-	jumpr fail,1,ge
-	move r2, temp_msb // store result
-	st r1,r2,0
+	jump i2c_start_cond
 
-	// Read 16 bit result
-	move r1, BMP280_ADDR
-	push r1
-	move r1, BMP280_REGISTER_TEMP + 1
-	push r1
+    move r2, BMP280_ADDR
+	lsh r2,r2,1
 	psr
-	jump read8
-	add r3,r3,2 // remove call parameters from stack
-	move r1,r0 // save result
-	move r0,r2 // test for error
-	jumpr fail,1,ge
-	move r2, temp_lsb // store result
-	st r1,r2,0
+	jump i2c_write_byte
+	jumpr popfail,1,ge
 
-	// Read 16 bit result
-	move r1, BMP280_ADDR
-	push r1
-	move r1, BMP280_REGISTER_TEMP + 2
-	push r1
+    MOVE r2, BMP280_REGISTER_PRESS
 	psr
-	jump read8
-	add r3,r3,2 // remove call parameters from stack
-	move r1,r0 // save result
-	move r0,r2 // test for error
-	jumpr fail,1,ge
-	move r2, temp_xlsb // store result
-	st r1,r2,0
+	jump i2c_write_byte
+	jumpr popfail,1,ge
 
-
-    /*
-	// Read raw pressure
-	move r1,BMP180_ADDR
-	push r1
-	move r1,BMP180_REG_CONTROL
-	push r1
-	move r1,BMP180_COMMAND_PRESSURE1
-	push r1
 	psr
-	jump write8
-	add r3,r3,3 // remove 3 arguments from stack
-	move r0,r2 // test for error in r2
-	jumpr fail,1,ge
+	jump i2c_start_cond
 
-	// Wait 8 ms for sensor computation
-	move r2,8
+    move r2, BMP280_ADDR
+	lsh r2,r2,1
+	or r2,r2,1 // Address Read
 	psr
-	jump waitMs
+	jump i2c_write_byte
+	jumpr popfail,1,ge
 
-	move r1,BMP180_ADDR
-	push r1
-	move r1,BMP180_REG_RESULT
-	push r1
+	move r2,0 // last byte
 	psr
-	jump read16
-	add r3,r3,2 // remove call parameters from stack
-	move r1,r0 // save result
-	move r0,r2 // test for error
-	jumpr fail,1,ge
-	move r2,pressure // store result
-	st r1,r2,0
+	jump i2c_read_byte
+	move r2, pres_msb
+	st r0,r2,0
 
-	move r1,BMP180_ADDR
-	push r1
-	move r1,(BMP180_REG_RESULT+2)
-	push r1
+
+	move r2,0 // last byte
 	psr
-	jump read8
-	add r3,r3,2 // remove call parameters from stack
-	move r1,r0 // save result
-	move r0,r2 // test for error
-	jumpr fail,1,ge
-	move r2,pressure2 // store result
-	st r1,r2,0
+	jump i2c_read_byte
+	move r2, pres_lsb
+	st r0,r2,0
 
-    */
-	ret
+
+	move r2,0 // last byte
+	psr
+	jump i2c_read_byte
+	move r2, pres_xlsb
+	st r0,r2,0
+
+
+	move r2,0 // last byte
+	psr
+	jump i2c_read_byte
+	move r2, temp_msb
+	st r0,r2,0
+
+
+	move r2,0 // last byte
+	psr
+	jump i2c_read_byte
+	move r2, temp_lsb
+	st r0,r2,0
+
+
+	move r2,1 // last byte
+	psr
+	jump i2c_read_byte
+	move r2, temp_xlsb
+	st r0,r2,0
+
+	psr
+	jump i2c_stop_cond
+
+	jump testTemp
 
 fail:
 	move r1,temp_msb
@@ -202,10 +188,12 @@ initBMP:
 
 	MOVE r1, BMP280_ADDR
 	PUSH r1
-	MOVE r1, BMP280_CTRL_MEAS
-	PUSH r1
-	MOVE r1, BMP280_CTRL_MEAS_VAL
-	PUSH r1
+	move r1, BMP280_CONFIG
+	push r1
+	move r1, reg_config
+	ld r0, r1,0
+	push r0
+
 	psr
 	JUMP write8
 	ADD r3,r3,3 // remove 3 arguments from stack
@@ -235,7 +223,7 @@ readok:
 	add r0,r0,2 // r0 += 2
 	st r0,r3,4 // [r3+4] = r0
 
-	jumpr read_cal, BMP280_REGISTER_END + 2,lt
+	jumpr read_cal, BMP280_REGISTER_DIG_END + 2,lt
 	add r3,r3,3
 	jump didInit
 

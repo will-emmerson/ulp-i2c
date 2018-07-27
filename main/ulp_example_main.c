@@ -100,23 +100,25 @@ const gpio_num_t gpio_sda = GPIO_NUM_33;
   */
 
 //#define SLEEP_CYCLES_PER_S 187500 // cycles per second
-#define SLEEP_CYCLES_PER_S 18750 // cycles per second
-#define SECONDS_PER_ULP_WAKEUP 1
+#define SLEEP_CYCLES_PER_S rtc_clk_slow_freq_get_hz() // cycles per second
+#define SECONDS_PER_ULP_WAKEUP 2
+
+RTC_DATA_ATTR static unsigned int boot_count = 0;
+RTC_DATA_ATTR static unsigned long wake_millis = 0;
 
 static void setup()
 {
-//    printf("ulp_config = %x\n", CONFIG);
-//    printf("ulp_ctrl = %x\n", CTRL_MEAS);
+    printf("ulp_config = 0x%x\n", CONFIG);
+    printf("ulp_ctrl = 0x%x\n", CTRL_MEAS);
 
     // pass the BMP config and ctrl register values to the ULP
-    ulp_reg_config = CONFIG;
-    ulp_reg_ctrl= CTRL_MEAS;
     rtc_gpio_init(gpio_scl);
     rtc_gpio_set_direction(gpio_scl, RTC_GPIO_MODE_INPUT_ONLY);
     rtc_gpio_init(gpio_sda);
     rtc_gpio_set_direction(gpio_sda, RTC_GPIO_MODE_INPUT_ONLY);
 
     ESP_ERROR_CHECK(ulp_load_binary(0, ulp_main_bin_start, (ulp_main_bin_end - ulp_main_bin_start) / sizeof(uint32_t)));
+
 
     /* Set ULP wake up period to T = 5 seconds */
     REG_SET_FIELD(SENS_ULP_CP_SLEEP_CYC0_REG, SENS_SLEEP_CYCLES_S0, (SECONDS_PER_ULP_WAKEUP*SLEEP_CYCLES_PER_S));
@@ -128,19 +130,22 @@ static void setup()
 #define t1 ((uint16_t)ulp_t1)
 #define t2 ((int16_t) ulp_t2)
 #define t3 ((int16_t) ulp_t3)
-#define p1 ((int16_t)ulp_p1)
-#define p2 ((int16_t) ulp_p2)
-#define p3 ((int16_t) ulp_p3)
-#define p4 ((int16_t) ulp_p4)
-#define p5 ((int16_t) ulp_p5)
-#define p6 ((int16_t) ulp_p6)
-#define p7 ((int16_t) ulp_p7)
-#define p8 ((int16_t) ulp_p8)
-#define p9 ((int16_t) ulp_p9)
-#define temp_a ((uint8_t) ulp_temp_msb)
-#define temp_b ((uint8_t) ulp_temp_lsb)
-#define temp_c ((uint8_t) ulp_temp_xlsb)
-#define counter ((uint16_t) ulp_counter)
+#define dig_P1 ((uint16_t)ulp_p1)
+#define dig_P2 ((int16_t) ulp_p2)
+#define dig_P3 ((int16_t) ulp_p3)
+#define dig_P4 ((int16_t) ulp_p4)
+#define dig_P5 ((int16_t) ulp_p5)
+#define dig_P6 ((int16_t) ulp_p6)
+#define dig_P7 ((int16_t) ulp_p7)
+#define dig_P8 ((int16_t) ulp_p8)
+#define dig_P9 ((int16_t) ulp_p9)
+#define temp_msb ((uint8_t) ulp_temp_msb)
+#define temp_lsb ((uint8_t) ulp_temp_lsb)
+#define temp_xlsb ((uint8_t) ulp_temp_xlsb)
+#define pres_msb ((uint8_t) ulp_pres_msb)
+#define pres_lsb ((uint8_t) ulp_pres_lsb)
+#define pres_xlsb ((uint8_t) ulp_pres_xlsb)
+
 
 #define BME280_S32_t int32_t
 #define BME280_U32_t uint32_t
@@ -158,26 +163,55 @@ static BME280_S32_t bme280_compensate_T(BME280_S32_t adc_T) {
     return T;
 }
 
+// Returns pressure in Pa as unsigned 32 bit integer in Q24.8 format (24 integer bits and 8 fractional bits).
+// Output value of “24674867” represents 24674867/256 = 96386.2 Pa = 963.862 hPa
+float bme280_compensate_P(BME280_S32_t adc_P) {
+
+    float var1, var2, p;
+
+    var1=bme280_t_fine/2.0-64000.0;
+    var2=var1*var1*dig_P6/32768.0;
+    var2=var2+var1*dig_P5*2;
+    var2=var2/4.0+dig_P4*65536.0;
+    var1=(dig_P3*var1*var1/524288.0+dig_P2*var1)/524288.0;
+    var1=(1.0+var1/32768.0)*dig_P1;
+
+    p=1048576.0-adc_P;
+    p=(p-var2/4096.0)*6250.0/var1;
+    var1=dig_P9*p*p/2147483648.0;
+    var2=p*dig_P8/32768.0;
+    p=p+(var1+var2+dig_P7)/16.0;
+
+    return p;
+}
+
 
 static void print_status()
 {
 
     // Must do Temp first since bme280_t_fine is used by the other compensation functions
 
-    BME280_S32_t temp ;
-    uint32_t adc_T = (uint32_t)(((temp_a << 16) | (temp_b << 8) | temp_c) >> 4);
+    float temp, press;
+    uint32_t adc_T = (uint32_t)(((temp_msb << 16) | (temp_lsb << 8) | temp_xlsb) >> 4);
+    uint32_t adc_P = (uint32_t)(((pres_msb << 16) | (pres_lsb << 8) | pres_xlsb) >> 4);
+
     if (adc_T == 0x80000 || adc_T == 0xfffff) {
         temp = 0;
     } else {
         temp = bme280_compensate_T(adc_T);
     }
 
-    printf("ADC_T: %i\n", adc_T);
-    printf("Temp: %i\n", temp);
-    printf("Counter: %d\n", counter);
-    ulp_counter = 0;
+    if (adc_P ==0x80000 || adc_P == 0xfffff) {
+        press = 0;
+    } else {
+        press = bme280_compensate_P(adc_P);
+    }
 
-    //pressure to be implemented
+    boot_count += 1;
+    printf("Boot count: %u\n", boot_count);
+    printf("Total wake s: %lu\n", wake_millis/1000);
+    printf("Temp: %.2f C\n", temp/100.0);
+    printf("Pres: %.2f hPa\n", press/100.0);
 
 //    printf("%d ", t1);
 //    printf("%d ", t2);
@@ -192,9 +226,8 @@ static void print_status()
 //    printf("%d ", p8);
 //    printf("%d ", p9);
 //    printf("\n");
-//    printf("%d ", temp_a);
-//    printf("%d ", temp_b);
-//    printf("%d \n", temp_c);
+//    printf("temp raw : 0x%x 0x%x 0x%x\n", temp_msb, temp_lsb, temp_xlsb);
+//    printf("press raw : 0x%x 0x%x 0x%x\n", pres_msb, pres_lsb, pres_xlsb);
 
 }
 
@@ -213,21 +246,21 @@ void app_main()
 
     esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
     if (cause != ESP_SLEEP_WAKEUP_ULP) {
-        printf("Not ULP wakeup, initializing ULP\n");
+        printf("First start - initializing ULP\n");
         setup();
     } else {
-    	printf("ULP wakeup, printing status\n");
         print_status();
     }
 
-    printf("Preparing for deep sleep\n\n");
+    ulp_reg_config = CONFIG;
+    ulp_reg_ctrl= CTRL_MEAS;
 
     ESP_ERROR_CHECK( esp_sleep_enable_ulp_wakeup() );
     ESP_ERROR_CHECK( ulp_run((&ulp_entry - RTC_SLOW_MEM) / sizeof(uint32_t)) );
 
     printf("Entering deep sleep\n\n");
     vTaskDelay(20);
-
+    wake_millis +=  esp_timer_get_time()/1000;
     gpio_set_level(LED_GPIO, 0);
     esp_deep_sleep_start();
 

@@ -58,33 +58,33 @@ write16:
 
 	jump write_b
 
-
 read_intro:
-	psr
-	jump i2c_start_cond
+       psr
+       jump i2c_start_cond
 
-	ld r2,r3,16 // Address
-	lsh r2,r2,1
-	psr
-	jump i2c_write_byte
-	jumpr popfail,1,ge
+       ld r2,r3,16 // Address
+       lsh r2,r2,1
+       psr
+       jump i2c_write_byte
+       jumpr popfail,1,ge
 
-	ld r2,r3,12 // Register
-	psr
-	jump i2c_write_byte
-	jumpr popfail,1,ge
+       ld r2,r3,12 // Register
+       psr
+       jump i2c_write_byte
+       jumpr popfail,1,ge
 
-	psr
-	jump i2c_start_cond
+       psr
+       jump i2c_start_cond
 
-	ld r2,r3,16
-	lsh r2,r2,1
-	or r2,r2,1 // Address Read
-	psr
-	jump i2c_write_byte
-	jumpr popfail,1,ge
+       ld r2,r3,16
+       lsh r2,r2,1
+       or r2,r2,1 // Address Read
+       psr
+       jump i2c_write_byte
+       jumpr popfail,1,ge
 
-	ret
+       ret
+
 popfail:
 	pop r1 // pop caller return address
 	move r2,1
