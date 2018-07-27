@@ -4,8 +4,7 @@ Implementation of ESP-32 ULP I2C application which reads a sensor (BMP-280) over
 processor after a significant change of the measured values.
 
 Todo :
-* Re-implement wakeup when temp changes (always wakes currently)
-* Pressure readout / calculations
+* Fix pressure sensitivity
 
 ## I2C bit banged support
 
