@@ -55,20 +55,16 @@ entry:
 	//jump wakeUp
 
 testTemp:
-    // SHIFT = 6
-    // temp_msb<< (8-SHIFT) | temp_lsb >> SHIFT
 	move r1,temp_msb
 	ld r0,r1,0
 	lsh r0,r0,8
 	move r1,temp_lsb
 	ld r1,r1,0
-	//rsh r1,r1,6
 	or r0,r1,r0
 
 	//save incase we need it
 	move r1, temp_val
 	st r0,r1,0
-
 
 	move r1,prev_temp
 	ld r2,r1,0
@@ -76,7 +72,8 @@ testTemp:
 	sub r0,r0,r2
 	psr
 	jump abs
-	jumpr waitNext,30,lt
+	// A threshold of 50 is equal to approx 0.25 C - adjust as needed
+	jumpr waitNext,50,lt
 
 	//save new temp
 	move r1, temp_val
