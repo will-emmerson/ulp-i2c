@@ -75,8 +75,8 @@ testPres:
 	sub r0,r0,r2
 	psr
 	jump abs
-	// A threshold of 50 is equal to approx 0.25 C - adjust as needed
-	jumpr waitNext,50,lt
+	// A threshold of 10 is equal to approx 0.39 hPa - adjust as needed
+	jumpr waitNext,17,lt
 
 
 wakeUp:

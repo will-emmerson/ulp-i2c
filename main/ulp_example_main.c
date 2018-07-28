@@ -101,9 +101,10 @@ const gpio_num_t gpio_sda = GPIO_NUM_33;
 
 //#define SLEEP_CYCLES_PER_S 187500 // cycles per second
 #define SLEEP_CYCLES_PER_S rtc_clk_slow_freq_get_hz() // cycles per second
-#define SECONDS_PER_ULP_WAKEUP 2
+#define SECONDS_PER_ULP_WAKEUP 5
 
 RTC_DATA_ATTR static unsigned int boot_count = 0;
+RTC_DATA_ATTR static unsigned int temp_count = 0;
 RTC_DATA_ATTR static unsigned long wake_millis = 0;
 
 static void setup()
@@ -189,6 +190,17 @@ float bme280_compensate_P(BME280_S32_t adc_P) {
 static void print_status()
 {
 
+    //update ULP previous values so the ULP knows when to wake again
+    uint16_t _temp = temp_msb << 8 | temp_lsb,
+            _pres = pres_msb << 8 | pres_lsb;
+
+    if (abs(_temp - ulp_prev_temp) >= 17) {
+        temp_count += 1;
+    };
+
+    ulp_prev_temp = _temp;
+    ulp_prev_pres = _pres;
+
     // Must do Temp first since bme280_t_fine is used by the other compensation functions
 
     float temp, press;
@@ -209,9 +221,11 @@ static void print_status()
 
     boot_count += 1;
     printf("Boot count: %u\n", boot_count);
+    printf("Temp count: %u\n", temp_count);
     printf("Total wake s: %lu\n", wake_millis/1000);
     printf("Temp: %.2f C\n", temp/100.0);
     printf("Pres: %.2f hPa\n", press/100.0);
+
 
 //    printf("%d ", t1);
 //    printf("%d ", t2);
