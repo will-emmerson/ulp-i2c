@@ -1,2 +1,6 @@
 build/
 *.old
+/.idea
+/TODO.yaml
+/sdkconfig
+/cmake-build-debug

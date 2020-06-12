@@ -1,0 +1,1 @@
+espcoredump.py -p /dev/ttyUSB${1:-0} -b 2000000 info_corefile build/ulp-i2c.elf

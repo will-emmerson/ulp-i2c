@@ -10,8 +10,6 @@
 #include <stdio.h>
 #include <math.h>
 #include "esp_sleep.h"
-#include "nvs.h"
-#include "nvs_flash.h"
 #include "esp_wifi.h"
 #include "soc/rtc.h"
 #include "soc/rtc_cntl_reg.h"
@@ -26,7 +24,6 @@
 #include "sdkconfig.h"
 
 #include "ulp_main.h"
-
 
 /*
  BMP280 Config options.
